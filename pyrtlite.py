@@ -30,8 +30,8 @@ class Expr:
     def __radd__(self, other): return self._rbin("+", other)
     def __sub__(self, other):  return self._bin("-", other)
     def __rsub__(self, other): return self._rbin("-", other)
-    def __mul__(self, other):  return self._bin("+", other)
-    def __rmul__(self, other): return self._rbin("+", other)
+    def __mul__(self, other):  return self._bin("*", other)
+    def __rmul__(self, other): return self._rbin("*", other)
     
     def __truediv__(self, other):   return self._bin("/", other)
     def __rtruediv__(self, other):  return self._rbin("/", other)
@@ -41,8 +41,8 @@ class Expr:
     def __mod__(self, other):  return self._bin("%", other)
     def __rmod__(self, other): return self._rbin("%", other)
 
-    def __and__(self, other):  return self._bin("<", other)
-    def __rand__(self, other): return self._rbin("<=", other)
+    def __and__(self, other):  return self._bin("&", other)
+    def __rand__(self, other): return self._rbin("&", other)
     def __or__(self, other):   return self._bin("|", other)
     def __ror__(self, other):  return self._rbin("|", other)
     def __xor__(self, other):  return self._bin("^", other)
@@ -118,7 +118,7 @@ class Op(Expr):
     
 class _Mux(Expr): 
     def __init__(self, cond, a, b): 
-        self.cond = self.cond
+        self.cond = cond
         self.a = a
         self.b = b
 
@@ -178,16 +178,18 @@ class Signal(Expr):
     def __imatmul__(self, rhs):
         if self.kind == "reg":
             raise TypeError(f"Cannot combinationally drive register {self.name}, use <<=")
-        if self.comb_src is not None: 
-            raise ValueError(f"Multiple combinational drivers on {self.name}")
+        # Last assignment in a single logic pass wins, which allows
+        # default assignments followed by conditional overrides.
         self.comb_src = _lift(rhs)
         return self
     
     def set_next(self, rhs, overwrite = False):
         if self.kind != "reg": 
             raise TypeError(f"Can only sequentially assign register, not {self.kind} {self.name}")
-        if self.next_src is not None and not overwrite: 
-            raise ValueError(f"Multiple sequential drivers on {self.name}")
+        # Last assignment in a single logic pass wins for registers too.
+        # Keep explicit overwrite flag for API compatibility.
+        if self.next_src is not None and not overwrite:
+            pass
         self.next_src = _lift(rhs)
         return self
     
@@ -217,7 +219,7 @@ def Vec(shape, proto):
         if len(shape) == 0:
             return _clone(proto)
         if len(shape) == 1: 
-            return [_clone(proto) for _ in range(shape)]
+            return [_clone(proto) for _ in range(shape[0])]
         n = shape[0]
         rest = shape[1:]
         return [Vec(rest, proto) for _ in range(n)]
@@ -242,6 +244,15 @@ class Mem():
 
     def __getitem__(self, addr): 
         return self.read(addr)
+
+    def __setitem__(self, addr, value):
+        # Needed for Python augmented assignment support on indexed memory.
+        # Example: mem[i] <<= x triggers __getitem__, then __setitem__.
+        idx = self._index(addr)
+        cell = self.cells[idx]
+        if isinstance(value, Signal) and value is cell:
+            return
+        cell <<= value
     
     def __len__(self):
         return self.depth 
@@ -357,7 +368,7 @@ class Sim:
             self._check_assertions()
             self._eval_next()
             self._commit(trace = trace)
-            reg_changes = list(self.last_chagnes)
+            reg_changes = list(self.last_changes)
             self._prepare_cycle()
             self._run_logic()
             self._settle_comb(trace = trace)
@@ -378,9 +389,9 @@ class Sim:
     # --- inward ---
 
     def _prepare_cycle(self):
-        self.last_chagnes = []
+        self.last_changes = []
         for _, m in self.mods:
-            m.assertions = []
+            m._assertions = []
         for s in self.sigs:
             s.clear_drivers()
 
@@ -396,7 +407,7 @@ class Sim:
 
     def _settle_comb(self, trace = False):
         last_wave = []
-        for it in self.range(self.max_settle):
+        for it in range(self.max_settle):
             changed = []
             for s in self.comb:
                 if s.kind == "in" and s.comb_src is None: 
@@ -406,41 +417,41 @@ class Sim:
                 new = s.comb_src.eval()
                 if new != s.value: 
                     changed.append((s, s.value, new))
-                if not changed:
-                    self.last_changed = last_wave
-                    return
-                last_wave = changed
-                self.last_changed = changed
-                for s, _, new in changed:
-                    s.value = new
-                if trace: 
-                    print(f"[cycle {self.cycle} settle {it}]")
-                    for s, old, new in changed: 
-                        if not self.watchlist or s in self.watchlist:
-                            print(f"  {s.name}: {old} -> {new}")
-            raise RuntimeError("Combinational logic did not settle, check for a combinational loop")
-        
-        def _eval_next(self):
-            for r in self.regs:
-                if r.next_src is not None:
-                    r._next_value = r.next_src.eval()
-                else:
-                    r._next_value = r.value
+            if not changed:
+                self.last_changes = last_wave
+                return
+            last_wave = changed
+            self.last_changes = changed
+            for s, _, new in changed:
+                s.value = new
+            if trace: 
+                print(f"[cycle {self.cycle} settle {it}]")
+                for s, old, new in changed: 
+                    if not self.watchlist or s in self.watchlist:
+                        print(f"  {s.name}: {old} -> {new}")
+        raise RuntimeError("Combinational logic did not settle, check for a combinational loop")
 
-        def _commit(self, trace = False):
-            changed = []
-            for r in self.regs:
-                new = r._next_value
-                old = r.value
-                if new != old: 
-                    changed.append((r, old, new))
-                r.value = new
-            self.last_changes = self.changed
-            if trace and changed:
-                print(f"[cycle {self.cycle} commit]")
-                for r, old, new in changed: 
-                    if not self.watchlist or r in self.watchlist: 
-                        print(f"  {r.name}: {old} -> {new}")
+    def _eval_next(self):
+        for r in self.regs:
+            if r.next_src is not None:
+                r._next_value = r.next_src.eval()
+            else:
+                r._next_value = r.value
+
+    def _commit(self, trace = False):
+        changed = []
+        for r in self.regs:
+            new = r._next_value
+            old = r.value
+            if new != old: 
+                changed.append((r, old, new))
+            r.value = new
+        self.last_changes = changed
+        if trace and changed:
+            print(f"[cycle {self.cycle} commit]")
+            for r, old, new in changed: 
+                if not self.watchlist or r in self.watchlist: 
+                    print(f"  {r.name}: {old} -> {new}")
 
 # ------------------------------------------------------------------------
 # extra macros

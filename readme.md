@@ -1,4 +1,6 @@
-# pyrtl-lite: Practical Usage Guide
+# pyrtl-lite
+
+its 4am so sorry ai generated docs for now :p
 
 This guide shows how to build small hardware-style models with `pyrtlite.py`.
 The library is minimal, so most workflows are short and explicit.
