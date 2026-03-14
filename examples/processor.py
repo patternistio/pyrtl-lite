@@ -29,7 +29,6 @@ class Processor(Module):
 		self.zero = Reg(1)
 		self.halted = Reg(0)
 
-		# Helpful probes for debugging.
 		self.out_pc = Out(0)
 		self.out_a = Out(0)
 		self.out_zero = Out(0)
@@ -45,7 +44,6 @@ class Processor(Module):
 		next_byte_addr = (pc + 1) & 0xFF
 		operand = int(self.mem[next_byte_addr]) & 0xFF
 
-		# Defaults: hold state unless a branch overrides.
 		self.pc <<= (pc + 1) & 0xFF
 		self.a <<= a
 		self.zero <<= z
@@ -90,7 +88,6 @@ class Processor(Module):
 			elif opcode == HALT:
 				self.halted <<= 1
 			else:
-				# Unknown opcode: halt to avoid undefined behavior.
 				self.halted <<= 1
 
 		self.out_pc @= self.pc

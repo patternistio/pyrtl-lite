@@ -20,45 +20,45 @@ class Expr:
     def __float__(self):
         return float(self.eval())
     
-    def _bin(self, op, other): 
-        return Op(op, self, _lift(other))
+    def bin(self, op, other): 
+        return Op(op, self, lift(other))
     
-    def _rbin(self, op, other): 
-        return Op(op, _lift(other), self)
+    def rbin(self, op, other): 
+        return Op(op, lift(other), self)
     
-    def __add__(self, other):  return self._bin("+", other)
-    def __radd__(self, other): return self._rbin("+", other)
-    def __sub__(self, other):  return self._bin("-", other)
-    def __rsub__(self, other): return self._rbin("-", other)
-    def __mul__(self, other):  return self._bin("*", other)
-    def __rmul__(self, other): return self._rbin("*", other)
+    def __add__(self, other):  return self.bin("+", other)
+    def __radd__(self, other): return self.rbin("+", other)
+    def __sub__(self, other):  return self.bin("-", other)
+    def __rsub__(self, other): return self.rbin("-", other)
+    def __mul__(self, other):  return self.bin("*", other)
+    def __rmul__(self, other): return self.rbin("*", other)
     
-    def __truediv__(self, other):   return self._bin("/", other)
-    def __rtruediv__(self, other):  return self._rbin("/", other)
-    def __floordiv__(self, other):  return self._bin("//", other)
-    def __rfloordiv__(self, other): return self._rbin("//", other)
+    def __truediv__(self, other):   return self.bin("/", other)
+    def __rtruediv__(self, other):  return self.rbin("/", other)
+    def __floordiv__(self, other):  return self.bin("//", other)
+    def __rfloordiv__(self, other): return self.rbin("//", other)
     
-    def __mod__(self, other):  return self._bin("%", other)
-    def __rmod__(self, other): return self._rbin("%", other)
+    def __mod__(self, other):  return self.bin("%", other)
+    def __rmod__(self, other): return self.rbin("%", other)
 
-    def __and__(self, other):  return self._bin("&", other)
-    def __rand__(self, other): return self._rbin("&", other)
-    def __or__(self, other):   return self._bin("|", other)
-    def __ror__(self, other):  return self._rbin("|", other)
-    def __xor__(self, other):  return self._bin("^", other)
-    def __rxor__(self, other): return self._rbin("^", other)
+    def __and__(self, other):  return self.bin("&", other)
+    def __rand__(self, other): return self.rbin("&", other)
+    def __or__(self, other):   return self.bin("|", other)
+    def __ror__(self, other):  return self.rbin("|", other)
+    def __xor__(self, other):  return self.bin("^", other)
+    def __rxor__(self, other): return self.rbin("^", other)
 
-    def __lt__(self, other): return self._bin("<", other)
-    def __le__(self, other): return self._bin("<=", other)
-    def __gt__(self, other): return self._bin(">", other)
-    def __ge__(self, other): return self._bin(">=", other)
-    def __eq__(self, other): return self._bin("==", other)
-    def __ne__(self, other): return self._bin("!=", other)
+    def __lt__(self, other): return self.bin("<", other)
+    def __le__(self, other): return self.bin("<=", other)
+    def __gt__(self, other): return self.bin(">", other)
+    def __ge__(self, other): return self.bin(">=", other)
+    def __eq__(self, other): return self.bin("==", other)
+    def __ne__(self, other): return self.bin("!=", other)
 
     def __neg__(self):    return UnaryOp("neg", self)
     def __invert__(self): return UnaryOp("invert", self)
 
-def _lift(x):
+def lift(x):
     if isinstance(x, Expr):
         return x
     return Const(x)
@@ -76,7 +76,7 @@ class Const(Expr):
 class UnaryOp(Expr): 
     def __init__(self, op, x):
         self.op = op
-        self.x = _lift(x)
+        self.x = lift(x)
 
     def eval(self):
         x = self.x.eval()
@@ -90,8 +90,8 @@ class UnaryOp(Expr):
 class Op(Expr): 
     def __init__(self, op, a, b):
         self.op = op
-        self.a = _lift(a)
-        self.b = _lift(b)
+        self.a = lift(a)
+        self.b = lift(b)
 
     def eval(self): 
         a = self.a.eval()
@@ -116,7 +116,7 @@ class Op(Expr):
     def __str__(self):
         return f"Op({self.op}, {self.a}, {self.b})"
     
-class _Mux(Expr): 
+class Mux(Expr): 
     def __init__(self, cond, a, b): 
         self.cond = cond
         self.a = a
@@ -128,10 +128,10 @@ class _Mux(Expr):
     def __str__(self):
         return f"Mux({self.cond}, {self.a}, {self.b})"
 
-def Mux(cond, a, b):
-    return _Mux(_lift(cond), _lift(a), _lift(b))
+def mux(cond, a, b):
+    return Mux(lift(cond), lift(a), lift(b))
 
-class _ScheduledValue(Expr):
+class ScheduledValue(Expr):
     def __init__(self, signal):
         self.signal = signal 
 
@@ -166,7 +166,7 @@ class Signal(Expr):
     
     @property
     def nxt(self):
-        return _ScheduledValue(self)
+        return ScheduledValue(self)
     
     def reset_value(self):
         self.value = copy.deepcopy(self.init)
@@ -180,7 +180,7 @@ class Signal(Expr):
             raise TypeError(f"Cannot combinationally drive register {self.name}, use <<=")
         # Last assignment in a single logic pass wins, which allows
         # default assignments followed by conditional overrides.
-        self.comb_src = _lift(rhs)
+        self.comb_src = lift(rhs)
         return self
     
     def set_next(self, rhs, overwrite = False):
@@ -190,7 +190,7 @@ class Signal(Expr):
         # Keep explicit overwrite flag for API compatibility.
         if self.next_src is not None and not overwrite:
             pass
-        self.next_src = _lift(rhs)
+        self.next_src = lift(rhs)
         return self
     
     def __ilshift__(self, rhs): 
@@ -209,17 +209,17 @@ def Reg(init = 0): return Signal(init, "reg")
 # vectors
 # ------------------------------------------------------------------------
 
-def _clone(x):
+def clone(x):
     return copy.deepcopy(x)
 
 def Vec(shape, proto):
     if isinstance(shape, int):
-        return [_clone(proto) for _ in range(shape)]
+        return [clone(proto) for _ in range(shape)]
     if isinstance(shape, tuple):
         if len(shape) == 0:
-            return _clone(proto)
+            return clone(proto)
         if len(shape) == 1: 
-            return [_clone(proto) for _ in range(shape[0])]
+            return [clone(proto) for _ in range(shape[0])]
         n = shape[0]
         rest = shape[1:]
         return [Vec(rest, proto) for _ in range(n)]
@@ -230,17 +230,17 @@ class Mem():
         self.depth = depth
         self.cells = Vec(depth, Reg(init))
 
-    def _index(self, addr): 
+    def index(self, addr): 
         index = int(addr)
         if not 0 <= index < self.depth:
             raise IndexError(f"Memory address {index} out of range for depth {self.depth}")
         return index
     
     def read(self, addr): 
-        return self.cells[self._index(addr)]
+        return self.cells[self.index(addr)]
     
     def write(self, addr, value):
-        self.cells[self._index(addr)] <<= value
+        self.cells[self.index(addr)] <<= value
 
     def __getitem__(self, addr): 
         return self.read(addr)
@@ -248,7 +248,7 @@ class Mem():
     def __setitem__(self, addr, value):
         # Needed for Python augmented assignment support on indexed memory.
         # Example: mem[i] <<= x triggers __getitem__, then __setitem__.
-        idx = self._index(addr)
+        idx = self.index(addr)
         cell = self.cells[idx]
         if isinstance(value, Signal) and value is cell:
             return
@@ -275,31 +275,31 @@ class Module:
         pass
 
     def Assert(self, cond, message = "Assertion failed"):
-        if not hasattr(self, "_assertions"):
-            self._assertions = []
-        self._assertions.append((_lift(cond), message))
+        if not hasattr(self, "assertions"):
+            self.assertions = []
+        self.assertions.append((lift(cond), message))
 
     def __str__(self):
         return f"Module({self.__class__.__name__})"
     
-def _walk_obj(x, path, mods, sigs): 
+def walk_obj(x, path, mods, sigs): 
     if isinstance(x, Module):
         mods.append((path, x))
         for k, v in x.__dict__.items():
-            _walk_obj(v, f"{path}.{k}" if path else k, mods, sigs)
+            walk_obj(v, f"{path}.{k}" if path else k, mods, sigs)
     elif isinstance(x, Signal): 
         x.name = path
         sigs.append((path, x))
     elif isinstance(x, Mem):
         for k, v in x.__dict__.items():
-            _walk_obj(v, f"{path}.{k}" if path else k, mods, sigs)
+            walk_obj(v, f"{path}.{k}" if path else k, mods, sigs)
     elif isinstance(x, (list, tuple)): 
         for i, v in enumerate(x): 
-            _walk_obj(v, f"{path}[{i}]", mods, sigs)
+            walk_obj(v, f"{path}[{i}]", mods, sigs)
 
-def _collect(top):
+def collect(top):
     mods, sigs = [], []
-    _walk_obj(top, "top", mods, sigs)
+    walk_obj(top, "top", mods, sigs)
     return mods, sigs
 
 # ------------------------------------------------------------------------
@@ -311,14 +311,12 @@ class Sim:
         self.top = top
         self.max_settle = max_settle
         self.cycle = 0 
-        self.mods, self.sigs_named = _collect(top)
+        self.mods, self.sigs_named = collect(top)
         self.sigs = [s for _, s in self.sigs_named]
         self.regs = [s for s in self.sigs if s.kind == "reg"]
         self.comb = [s for s in self.sigs if s.kind != "reg"]
         self.watchlist = []
         self.last_changes = []
-
-    # --- outward ---
 
     def poke(self, sig, value): 
         if not isinstance(sig, Signal):
@@ -355,23 +353,23 @@ class Sim:
             print(f"  {name} = {value}")
     
     def settle(self, trace = False):
-        self._prepare_cycle()
-        self._run_logic()
-        self._settle_comb(trace = trace)
-        self._check_assertions()
+        self.prepare_cycle()
+        self.run_logic()
+        self.settle_comb(trace = trace)
+        self.check_assertions()
 
     def step(self, n = 1, trace = False):
         for _ in range(n):
-            self._prepare_cycle()
-            self._run_logic()
-            self._settle_comb(trace = trace)
-            self._check_assertions()
-            self._eval_next()
-            self._commit(trace = trace)
+            self.prepare_cycle()
+            self.run_logic()
+            self.settle_comb(trace = trace)
+            self.check_assertions()
+            self.eval_next()
+            self.commit(trace = trace)
             reg_changes = list(self.last_changes)
-            self._prepare_cycle()
-            self._run_logic()
-            self._settle_comb(trace = trace)
+            self.prepare_cycle()
+            self.run_logic()
+            self.settle_comb(trace = trace)
             self.last_changes = reg_changes + list(self.last_changes)
             self.cycle += 1
         return self
@@ -386,26 +384,26 @@ class Sim:
             self.step(trace = trace)
         return bool(pred())
     
-    # --- inward ---
+    # --- internal ---
 
-    def _prepare_cycle(self):
+    def prepare_cycle(self):
         self.last_changes = []
         for _, m in self.mods:
-            m._assertions = []
+            m.assertions = []
         for s in self.sigs:
             s.clear_drivers()
 
-    def _check_assertions(self):
+    def check_assertions(self):
         for path, module in self.mods:
-            for cond, message in getattr(module, "_assertions", []):
+            for cond, message in getattr(module, "assertions", []):
                 if not cond.eval():
                     raise AssertionError(f"{path}: {message}")
     
-    def _run_logic(self):
+    def run_logic(self):
         for _, m in self.mods:
             m.logic()
 
-    def _settle_comb(self, trace = False):
+    def settle_comb(self, trace = False):
         last_wave = []
         for it in range(self.max_settle):
             changed = []
@@ -431,17 +429,17 @@ class Sim:
                         print(f"  {s.name}: {old} -> {new}")
         raise RuntimeError("Combinational logic did not settle, check for a combinational loop")
 
-    def _eval_next(self):
+    def eval_next(self):
         for r in self.regs:
             if r.next_src is not None:
-                r._next_value = r.next_src.eval()
+                r.next_value = r.next_src.eval()
             else:
-                r._next_value = r.value
+                r.next_value = r.value
 
-    def _commit(self, trace = False):
+    def commit(self, trace = False):
         changed = []
         for r in self.regs:
-            new = r._next_value
+            new = r.next_value
             old = r.value
             if new != old: 
                 changed.append((r, old, new))
@@ -453,12 +451,8 @@ class Sim:
                 if not self.watchlist or r in self.watchlist: 
                     print(f"  {r.name}: {old} -> {new}")
 
-# ------------------------------------------------------------------------
-# extra macros
-# ------------------------------------------------------------------------
-
 def poke(sig, value):
-    sig.value = value
+        sig.value = value
 
 def peek(sig):
     return sig.value
