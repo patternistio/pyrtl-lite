@@ -32,7 +32,7 @@ sim.state(include_inputs)           # list out (name, value)
 sim.dump()                          # print out current state
 ```
 
-along with support for a few special objects
+pyrtl lite also contains a few special objects
 
 ```python
 self.bus = Vec(n, In(0))            # creates array of length n
