@@ -3,33 +3,33 @@ pyrtl lite is a hdlish python dsl made to speed up hardware development.
 hardware is specified using `Module` objects as follows
 
 ```python
-from pyrtlite import *      # pyrtl lite is a one file library
+from pyrtlite import *              # pyrtl lite is a one file library
 
-class Foo(Module):          # hardware inherits from module
-    def build(self):        # declare signals in build()
-        self.a = In(0)      # inputs arent driven internally
-        self.b = Reg(0)     # registers are sequentially driven
-        self.c = Wire(0)    # wires are combinationally driven
-        self.d = Out(0)     # outputs are combinationally driven
+class Foo(Module):                  # hardware inherits from module
+    def build(self):                # declare signals in build()
+        self.a = In(0)              # inputs arent driven internally
+        self.b = Reg(0)             # registers are sequentially driven
+        self.c = Wire(0)            # wires are combinationally driven
+        self.d = Out(0)             # outputs are combinationally driven
 
-    def logic(self):        # declare all logic in logic()
-        self.b <<= self.a   # sequential assignment uses <<=
-        self.d @= self.b    # combinational assignment uses @=
+    def logic(self):                # declare all logic in logic()
+        self.b <<= self.a           # sequential assignment uses <<=
+        self.d @= self.b            # combinational assignment uses @=
 ```
 
 and can then be simulated using `Sim` 
 
 ```python
-sim = Sim(Foo)              # create sim with Sim()
+sim = Sim(Foo)                      # create sim with Sim()
 
-sim.poke(sig, val)          # set signal value 
-sim.peek(sig)               # read signal value
-sim.settle(trace)           # combinational settle
-sim.step(n, trace)          # advance by n cycles
-sim.run(n, trace)           # alias of step
-sim.until(cond, max_cycles) # run until cond is true
-sim.state(include_inputs)   # list out (name, value)
-sim.dump()                  # print out current state
+sim.poke(sig, val)                  # set signal value 
+sim.peek(sig)                       # read signal value
+sim.settle(trace)                   # combinational settle
+sim.step(n, trace)                  # advance by n cycles
+sim.run(n, trace)                   # alias of step
+sim.until(cond, max_cycles)         # run until cond is true
+sim.state(include_inputs)           # list out (name, value)
+sim.dump()                          # print out current state
 ```
 
 along with support for a few special objects
