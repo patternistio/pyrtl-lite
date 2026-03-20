@@ -17,7 +17,7 @@ class Foo(Module):          # hardware inherits from module
         self.d @= self.b    # combinational assignment uses @=
 ```
 
-pyrtl lite also includes a small simulator 
+and can then be simulated using `Sim` 
 
 ```python
 sim = Sim(Foo)              # create sim with Sim()
