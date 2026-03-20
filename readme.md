@@ -46,8 +46,6 @@ self.out &= Mux(cond, a, b)         # if cond choose a else b
 self.Assert(cond, msg)              # mmodule level assertion
 ``` 
 
-behind the scenes, combinational expressions are compiled into a lazy evaluation graph and signals hold values between sim steps. 
+behind the scenes, combinational expressions are compiled into a lazy evaluation graph and signals hold values between sim steps. each simulation cycle, the simulator builds logic, performs a combinational settle, evaluates the next sequential state, commits, and then performs another combinational settle. 
 
-each simulation cycle, the simulator builds logic, performs a combinational settle, evaluates the next sequential state, commits, and then performs another combinational settle. 
-
-the library is intentionally minimal and easy to modify. please add more features! s
+the library is intentionally minimal and easy to modify. please add more features!
