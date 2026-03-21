@@ -1,4 +1,4 @@
-# pyrtl(-lite).py
+# pyrtl(ite).py
 # a minimal hardware-ish simulator
 
 import copy
@@ -178,16 +178,12 @@ class Signal(Expr):
     def __imatmul__(self, rhs):
         if self.kind == "reg":
             raise TypeError(f"Cannot combinationally drive register {self.name}, use <<=")
-        # Last assignment in a single logic pass wins, which allows
-        # default assignments followed by conditional overrides.
         self.comb_src = lift(rhs)
         return self
     
     def set_next(self, rhs, overwrite = False):
         if self.kind != "reg": 
             raise TypeError(f"Can only sequentially assign register, not {self.kind} {self.name}")
-        # Last assignment in a single logic pass wins for registers too.
-        # Keep explicit overwrite flag for API compatibility.
         if self.next_src is not None and not overwrite:
             pass
         self.next_src = lift(rhs)
