@@ -37,6 +37,7 @@ pyrtl lite also contains a few special objects
 ```python
 self.bus = Vec(n, In(0))            # creates array of length n
 self.grid = Vec((n, m), Reg(0))     # creates a (n, m) matrix
+output = self.bus.to_list()         # converts any vector to a list
 
 self.mem = Mem(depth, init)         # register array with depth
 self.mem.read(addr)                 # read value at addr in mem
