@@ -149,8 +149,8 @@ if __name__ == "__main__":
     c_sys = run(n, a, b)
     c_ref = ref(n, a, b)
 
-    print("Matrix Multiplication Completed")
-    print("systolic:")
+    print("matmul completed")
+    print("\nsystolic:")
     for i in range(n):
         print(f"{c_sys[i]}")
     print("\nreference:")
