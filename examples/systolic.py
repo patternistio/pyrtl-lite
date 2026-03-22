@@ -126,8 +126,8 @@ if __name__ == "__main__":
 
     a = [
         [1, 0, 0],
-        [0, 1, 0], 
-        [0, 0, 1]
+        [1, 1, 0], 
+        [1, 1, 1]
     ]
 
     b = [
@@ -137,6 +137,8 @@ if __name__ == "__main__":
     ]
 
     c = run(n, a, b)
-    
+
+    print("Matrix Multiplication Completed")
+    print("result: ")
     for i in range(n):
         print(f"{c[i]}")

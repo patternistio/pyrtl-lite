@@ -125,5 +125,5 @@ if __name__ == "__main__":
     cpu, sim = run(program, trace = False)
 
     print("Program Completed")
-    print(f"MEM[F0] (index) = {sim.peek(cpu.mem.read(0xF0))}")
-    print(f"MEM[F1] (sum)   = {sim.peek(cpu.mem.read(0xF1))}")
+    print(f"index = {sim.peek(cpu.mem.read(0xF0))}")
+    print(f"sum   = {sim.peek(cpu.mem.read(0xF1))}")
