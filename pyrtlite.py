@@ -1,5 +1,5 @@
 # pyrtl(ite).py
-# a minimal hardware-ish simulator
+# a minimal (<500 loc) hardware-ish simulator
 
 import copy
 
@@ -208,54 +208,78 @@ def Reg(init = 0): return Signal(init, "reg")
 def clone(x):
     return copy.deepcopy(x)
 
-def Vec(shape, proto):
-    if isinstance(shape, int):
-        return [clone(proto) for _ in range(shape)]
-    if isinstance(shape, tuple):
-        if len(shape) == 0:
-            return clone(proto)
-        if len(shape) == 1: 
-            return [clone(proto) for _ in range(shape[0])]
-        n = shape[0]
-        rest = shape[1:]
-        return [Vec(rest, proto) for _ in range(n)]
-    raise TypeError("Vec shape must be int or tuple")
-
-class Mem(): 
-    def __init__(self, depth, init = 0):
-        self.depth = depth
-        self.cells = Vec(depth, Reg(init))
-
-    def index(self, addr): 
-        index = int(addr)
-        if not 0 <= index < self.depth:
-            raise IndexError(f"Memory address {index} out of range for depth {self.depth}")
-        return index
+class Vec():
+    def __init__(self, shape, proto):
+        if isinstance(shape, int):
+            self.data = [clone(proto) for _ in range(shape)]
+            self.shape = (shape,)
+        elif isinstance(shape, tuple):
+            if len(shape) == 0:
+                self.data = clone(proto)
+                self.shape = ()
+            elif len(shape) == 1:
+                self.data = [clone(proto) for _ in range(shape[0])]
+                self.shape = shape
+            else: 
+                n = shape[0]
+                rest = shape[1:]
+                self.data = [Vec(rest, proto) for _ in range(n)]
+                self.shape = shape
+        else: 
+            raise TypeError("Vec shape must be int or tuple")
+        
+    def __getitem__(self, index):
+        if isinstance(index, Expr):
+            index = index.eval()
+        if isinstance(self.data, list):
+            return self.data[index]
+        return self.data
     
-    def read(self, addr): 
-        return self.cells[self.index(addr)]
-    
-    def write(self, addr, value):
-        self.cells[self.index(addr)] <<= value
-
-    def __getitem__(self, addr): 
-        return self.read(addr)
-
-    def __setitem__(self, addr, value):
-        # Needed for Python augmented assignment support on indexed memory.
-        # Example: mem[i] <<= x triggers __getitem__, then __setitem__.
-        idx = self.index(addr)
-        cell = self.cells[idx]
-        if isinstance(value, Signal) and value is cell:
-            return
-        cell <<= value
-    
+    def __setitem__(self, index, value):
+        if isinstance(index, Expr):
+            index = index.eval()
+        if isinstance(self.data, list):
+            self.data[index] = value
+        else:
+            raise TypeError("Cannot index a scalar Vec")
+        
     def __len__(self):
-        return self.depth 
+        if isinstance(self.data, list):
+            return len(self.data)
+        return 1
+        
+    def to_list(self): 
+        if isinstance(self.data, Signal):
+            return self.data.value
+        if isinstance(self.data, list): 
+           return [item.to_list() if isinstance(item, Vec) 
+                   else item.value if isinstance(item, Signal) 
+                   else item for item in self.data]
+        return self.data
     
     def __str__(self):
-        return f"Mem()"
+        return f"Vec({self.shape})"
 
+class Mem(Vec): 
+    def __init__(self, depth, init = 0):
+        super().__init__(depth, Reg(init))
+        self.depth = depth
+
+    def __getitem__(self, addr):
+        if isinstance(addr, Expr):
+            addr = addr.eval()
+        return self.data[addr]
+    
+    def read(self, addr): 
+        if isinstance(addr, Expr):
+            addr = addr.eval()
+        return self.data[addr]
+    
+    def write(self, addr, value): 
+        if isinstance(addr, Expr):
+            addr = addr.eval()
+        self.data[addr] <<= value
+    
 # ------------------------------------------------------------------------
 # module system
 # ------------------------------------------------------------------------
@@ -287,8 +311,17 @@ def walk_obj(x, path, mods, sigs):
         x.name = path
         sigs.append((path, x))
     elif isinstance(x, Mem):
-        for k, v in x.__dict__.items():
-            walk_obj(v, f"{path}.{k}" if path else k, mods, sigs)
+        if isinstance(x.data, list):
+            for i, v in enumerate(x.data):
+                walk_obj(v, f"{path}[{i}]", mods, sigs)
+        else:
+            walk_obj(x.data, path, mods, sigs)
+    elif isinstance(x, Vec):
+        if isinstance(x.data, list):
+            for i, v in enumerate(x.data):
+                walk_obj(v, f"{path}[{i}]", mods, sigs)
+        else:
+            walk_obj(x.data, path, mods, sigs)
     elif isinstance(x, (list, tuple)): 
         for i, v in enumerate(x): 
             walk_obj(v, f"{path}[{i}]", mods, sigs)
@@ -375,7 +408,7 @@ class Sim:
     
     def until(self, pred, max_cycles = 1000, trace = False):
         for _ in range(max_cycles):
-            if pred():
+            if pred.eval():
                 return True
             self.step(trace = trace)
         return bool(pred())

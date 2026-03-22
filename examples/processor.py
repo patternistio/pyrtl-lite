@@ -13,8 +13,8 @@ ADDI = 0x20     # ADDI imm : A <- A + imm
 ADD  = 0x21     # ADD addr : A <- A + MEM
 SUBI = 0x22     # SUBI imm : A <- A - imm
 JMP  = 0x30     # JMP addr : PC <- addr
-JZ   = 0x31     # JZ  addr : PC <- addr if z == 0
-JNZ  = 0x32     # JNZ addr : PC <- addr if z != 0
+JZ   = 0x31     # JZ  addr : PC <- addr if z
+JNZ  = 0x32     # JNZ addr : PC <- addr if not z
 HALT = 0xFF     # HALT
 
 class Processor(Module): 
@@ -80,8 +80,8 @@ class Processor(Module):
 def load(cpu, program, start = 0): 
     for i, byte in enumerate(program): 
         addr = (start + i) & 0xFF
-        cpu.mem.cells[addr].value = byte & 0xFF
-        cpu.mem.cells[addr].init = byte & 0xFF
+        cpu.mem[addr].value = byte & 0xFF
+        cpu.mem[addr].init = byte & 0xFF
 
 def run(program, max = 200, trace = False): 
     cpu = Processor()
@@ -125,6 +125,5 @@ if __name__ == "__main__":
     cpu, sim = run(program, trace = False)
 
     print("Program Completed")
-    print(f"a = {sim.peek(cpu.a)}, pc = {sim.peek(cpu.pc)}, z = {sim.peek(cpu.z)}, h = {sim.peek(cpu.h)}")
     print(f"MEM[F0] (index) = {sim.peek(cpu.mem.read(0xF0))}")
     print(f"MEM[F1] (sum)   = {sim.peek(cpu.mem.read(0xF1))}")
