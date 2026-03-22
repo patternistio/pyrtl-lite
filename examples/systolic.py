@@ -104,8 +104,8 @@ class Driver(Module):
 def load(driver, n, a, b): 
     for i in range(n): 
         for j in range(n):
-            driver.mem_a[(i * n) + j] = a[i][j]
-            driver.mem_b[(i * n) + j] = b[i][j]
+            driver.mem_a[(i * n) + j] = float(a[i][j])
+            driver.mem_b[(i * n) + j] = float(b[i][j])
 
 def run(n, a, b, trace = False): 
     driver = Driver(n)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         [1, 1, 3]
     ]
 
-    c_sys = run(n, a, b)
+    c_sys = run(n, a, b, trace = True)
     c_ref = ref(n, a, b)
 
     print("matmul completed")
