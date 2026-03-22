@@ -77,7 +77,7 @@ class Driver(Module):
                     
             case DS.Busy: 
                 self.array.rst @= False
-                self.cycles      <<= self.cycles + 1
+                self.cycles    <<= self.cycles + 1
 
                 if self.cycles >= 2 * self.n + 1: 
                     self.done  @= True
