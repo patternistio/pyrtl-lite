@@ -50,7 +50,7 @@ class Systolic(Module):
                 pe.rst @= self.rst
                 self.c_out[i][j] @= pe.acc
 
-class DS(Module):
+class DS():
     Idle = 0
     Busy = 1
     Done = 2
@@ -121,6 +121,16 @@ def run(n, a, b, trace = False):
 
     return c
 
+def ref(n, a, b): 
+    c = [[0 for _ in range(n)] for _ in range(n)]
+
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                c[i][j] += float(a[i][k] * b[k][j])
+    return c
+
+
 if __name__ == "__main__": 
     n = 3
 
@@ -136,9 +146,13 @@ if __name__ == "__main__":
         [1, 1, 3]
     ]
 
-    c = run(n, a, b)
+    c_sys = run(n, a, b)
+    c_ref = ref(n, a, b)
 
     print("Matrix Multiplication Completed")
-    print("result: ")
+    print("systolic:")
     for i in range(n):
-        print(f"{c[i]}")
+        print(f"{c_sys[i]}")
+    print("\nreference:")
+    for i in range(n):
+        print(f"{c_ref[i]}")
